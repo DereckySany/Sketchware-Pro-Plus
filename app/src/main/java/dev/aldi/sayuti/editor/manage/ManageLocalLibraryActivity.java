@@ -6,6 +6,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,87 +27,105 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 import com.sketchware.remod.Resources;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
+import a.a.a.aB;
+import a.a.a.xB;
 import mod.SketchwareUtil;
 import mod.agus.jcoderz.lib.FileUtil;
 import mod.hey.studios.project.library.LibraryDownloader;
 import mod.hey.studios.util.Helper;
-import a.a.a.bB;
 
 public class ManageLocalLibraryActivity extends Activity implements View.OnClickListener, LibraryDownloader.OnCompleteListener {
 
-    private final ArrayList<HashMap<String, Object>> main_list = new ArrayList<>();
+    private static final String RESET_LOCAL_LIBRARIES_TAG = "reset_local_libraries";
+
     private final String local_libs_path = FileUtil.getExternalStorageDir() + "/.sketchware/libs/local_libs/";
+    private final ArrayList<HashMap<String, Object>> localLibraries = new ArrayList<>();
+    private boolean configuringProject = false;
     private ListView listview;
     private String configurationFilePath = "";
-    private ArrayList<HashMap<String, Object>> lookup_list = new ArrayList<>();
-    private ArrayList<HashMap<String, Object>> project_used_libs = new ArrayList<>();
 
     private void initToolbar() {
         ImageView back = findViewById(Resources.id.ig_toolbar_back);
         TextView title = findViewById(Resources.id.tx_toolbar_title);
-        ImageView import_library_icon = findViewById(Resources.id.ig_toolbar_load_file);
-        LinearLayout _parent = (LinearLayout) import_library_icon.getParent();
-        ImageView resetIc = new ImageView(ManageLocalLibraryActivity.this);       
-        resetIc.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        resetIc.setImageResource(R.drawable.ic_restore_white_24dp); //TODO: Please check if this is the correct Resource.
 
-        _parent.addView(resetIc);
-        Toolbar.LayoutParams _layoutResetIc=new Toolbar.LayoutParams(Toolbar.LayoutParams.WRAP_CONTENT, Toolbar.LayoutParams.WRAP_CONTENT);
-        _layoutResetIc.gravity=Gravity.END;
-        _layoutResetIc.setMargins(0,0,(int) getDip(4) ,0);
-        resetIc.setLayoutParams(_layoutResetIc);
+        ImageView importLibrary = findViewById(Resources.id.ig_toolbar_load_file);
 
         Helper.applyRippleToToolbarView(back);
         back.setOnClickListener(Helper.getBackPressedClickListener(this));
+
         title.setText("Local library Manager");
-        import_library_icon.setPadding(
+        importLibrary.setPadding(
                 (int) getDip(2),
                 (int) getDip(2),
                 (int) getDip(2),
                 (int) getDip(2)
         );
-        import_library_icon.setImageResource(Resources.drawable.download_80px);
-        import_library_icon.setVisibility(View.VISIBLE);
-        Helper.applyRippleToToolbarView(import_library_icon);
-        import_library_icon.setOnClickListener(this);
+        importLibrary.setImageResource(Resources.drawable.download_80px);
+        importLibrary.setVisibility(View.VISIBLE);
+        Helper.applyRippleToToolbarView(importLibrary);
+        importLibrary.setOnClickListener(this);
 
-        resetIc.setOnClickListener(new View.OnClickListener() {
-	 @Override
-	 public void onClick(View _view) {
-	  if (getIntent().getStringExtra("sc_id") != "system") {
-	     try{
-  	         FileUtil.writeFile(configurationFilePath, "[]");	
-		 bB.a(ManageLocalLibraryActivity.this, "Successfully reset local library selections", 0).show();
-		}catch(Exception e){
-	       	 bB.a(ManageLocalLibraryActivity.this, "Failed to reset local library selections.\nError:" + e.toString(), 0).show();
-		}
-		loadFiles();
+        if (configuringProject) {
+            ImageView reset = new ImageView(ManageLocalLibraryActivity.this);
+            LinearLayout toolbar = (LinearLayout) back.getParent();
+            toolbar.addView(reset, 2);
+
+            reset.setTag(RESET_LOCAL_LIBRARIES_TAG);
+            {
+                ViewGroup.LayoutParams layoutParams = importLibrary.getLayoutParams();
+                if (layoutParams != null) {
+                    reset.setLayoutParams(layoutParams);
+                }
             }
+            reset.setImageResource(Resources.drawable.ic_restore_white_24dp);
+            reset.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            Helper.applyRippleToToolbarView(reset);
+            reset.setOnClickListener(this);
         }
-      });
     }
 
     @Override
     public void onClick(View v) {
-        new AlertDialog.Builder(this)
-                .setTitle("Dexer")
-                .setMessage("Would you like to use Dx or D8 to dex the library?\n" +
-                        "D8 supports Java 8, whereas Dx does not. Limitation: D8 only works on Android 8 and above.")
-                .setPositiveButton("D8", (dialogInterface, i) ->
-                        new LibraryDownloader(ManageLocalLibraryActivity.this, true)
-                                .showDialog(ManageLocalLibraryActivity.this))
-                .setNegativeButton("Dx", (dialogInterface, i) ->
-                        new LibraryDownloader(ManageLocalLibraryActivity.this, false)
-                                .showDialog(ManageLocalLibraryActivity.this))
-                .setNeutralButton(Resources.string.common_word_cancel, null)
-                .show();
+        if (v.getId() == Resources.id.ig_toolbar_load_file) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Dexer")
+                    .setMessage("Would you like to use Dx or D8 to dex the library?\n" +
+                            "D8 supports Java 8, whereas Dx does not. Limitation: D8 only works on Android 8 and above.")
+                    .setPositiveButton("D8", (dialogInterface, i) ->
+                            new LibraryDownloader(ManageLocalLibraryActivity.this, true)
+                                    .showDialog(ManageLocalLibraryActivity.this))
+                    .setNegativeButton("Dx", (dialogInterface, i) ->
+                            new LibraryDownloader(ManageLocalLibraryActivity.this, false)
+                                    .showDialog(ManageLocalLibraryActivity.this))
+                    .setNeutralButton(Resources.string.common_word_cancel, null)
+                    .show();
+        } else if (RESET_LOCAL_LIBRARIES_TAG.equals(v.getTag())) {
+            if (configuringProject) {
+                aB dialog = new aB(this);
+                dialog.a(Resources.drawable.rollback_96);
+                dialog.b("Reset libraries?");
+                dialog.a("This will reset all used local libraries for this project. Are you sure?");
+                dialog.a(xB.b().a(getApplicationContext(), Resources.string.common_word_cancel),
+                        Helper.getDialogDismissListener(dialog));
+                dialog.b(xB.b().a(getApplicationContext(), Resources.string.common_word_reset), view -> {
+                    FileUtil.writeFile(configurationFilePath, "[]");
+                    SketchwareUtil.toast("Successfully reset local libraries");
+                    loadFiles();
+                    dialog.dismiss();
+                });
+                dialog.show();
+            }
+        }
     }
 
     @Override
@@ -129,8 +150,10 @@ public class ManageLocalLibraryActivity extends Activity implements View.OnClick
         root.addView(refreshLayout);
 
         refreshLayout.setOnRefreshListener(() -> {
+            saveConfiguration();
             loadFiles();
-            refreshLayout.setRefreshing(false);
+            new Handler(Looper.myLooper()).postDelayed(() -> refreshLayout.setRefreshing(false),
+                    500);
         });
         listview.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -148,6 +171,7 @@ public class ManageLocalLibraryActivity extends Activity implements View.OnClick
         if (getIntent().hasExtra("sc_id")) {
             String sc_id = getIntent().getStringExtra("sc_id");
             configurationFilePath = FileUtil.getExternalStorageDir() + "/.sketchware/data/" + sc_id + "/local_library";
+            configuringProject = !sc_id.equals("system");
             initToolbar();
             loadFiles();
         } else {
@@ -155,17 +179,25 @@ public class ManageLocalLibraryActivity extends Activity implements View.OnClick
         }
     }
 
+    @Override
+    protected void onStop() {
+        saveConfiguration();
+        super.onStop();
+    }
+
     private void loadFiles() {
-        main_list.clear();
-        project_used_libs.clear();
-        lookup_list.clear();
-        if(getIntent().getStringExtra("sc_id") != "system" ) {
-        if (!FileUtil.isExistFile(configurationFilePath) || FileUtil.readFile(configurationFilePath).equals("")) {
-            FileUtil.writeFile(configurationFilePath, "[]");
-        } else {
-            project_used_libs = new Gson().fromJson(FileUtil.readFile(configurationFilePath), Helper.TYPE_MAP_LIST);
-        }
-        lookup_list = new Gson().fromJson(FileUtil.readFile(configurationFilePath), Helper.TYPE_MAP_LIST);
+        ArrayList<HashMap<String, Object>> inUseLocalLibraries = new ArrayList<>();
+        localLibraries.clear();
+        if (configuringProject) {
+            if (!FileUtil.isExistFile(configurationFilePath) || FileUtil.readFile(configurationFilePath).equals("")) {
+                FileUtil.writeFile(configurationFilePath, "[]");
+            } else {
+                try {
+                    inUseLocalLibraries = new Gson().fromJson(FileUtil.readFile(configurationFilePath), Helper.TYPE_MAP_LIST);
+                } catch (JsonParseException e) {
+                    SketchwareUtil.toastError("Failed to parse used Local libraries file: " + e.getMessage());
+                }
+            }
         }
 
         ArrayList<String> files = new ArrayList<>();
@@ -176,12 +208,92 @@ public class ManageLocalLibraryActivity extends Activity implements View.OnClick
             if (FileUtil.isDirectory(file)) {
                 HashMap<String, Object> map = new HashMap<>();
                 map.put("name", Uri.parse(file).getLastPathSegment());
-                main_list.add(map);
+                localLibraries.add(map);
             }
         }
 
-        listview.setAdapter(new LibraryAdapter(main_list));
+        for (int i = 0, localLibrariesSize = localLibraries.size(); i < localLibrariesSize; i++) {
+            HashMap<String, Object> availableLocalLibrary = localLibraries.get(i);
+            Object availableLocalLibraryName = availableLocalLibrary.get("name");
+
+            if (availableLocalLibraryName instanceof String) {
+                if (inUseLocalLibraries.size() == 0) {
+                    availableLocalLibrary.put("inUse", false);
+                } else {
+                    for (HashMap<String, Object> inUseLibrary : inUseLocalLibraries) {
+                        Object inUseLibraryName = inUseLibrary.get("name");
+
+                        if (inUseLibraryName instanceof String) {
+                            if (availableLocalLibraryName.equals(inUseLibraryName)) {
+                                availableLocalLibrary.put("inUse", true);
+                                inUseLocalLibraries.remove(inUseLibrary);
+                                break;
+                            } else {
+                                availableLocalLibrary.put("inUse", false);
+                            }
+                        }
+                    }
+                }
+            } else {
+                SketchwareUtil.toastError("In-use Local library #" + (i + 1) + " has an invalid name!");
+            }
+        }
+
+        listview.setAdapter(new LibraryAdapter(localLibraries));
         ((BaseAdapter) listview.getAdapter()).notifyDataSetChanged();
+    }
+
+    private void saveConfiguration() {
+        ArrayList<HashMap<String, Object>> inUseLibraries = new ArrayList<>();
+
+        for (HashMap<String, Object> localLibrary : localLibraries) {
+            Object inUse = localLibrary.get("inUse");
+
+            if (inUse instanceof Boolean && (Boolean) inUse) {
+                Object localLibraryName = localLibrary.get("name");
+
+                if (localLibraryName instanceof String) {
+                    HashMap<String, Object> libraryMetadata = new HashMap<>();
+                    libraryMetadata.put("name", localLibraryName);
+
+                    String libraryPath = local_libs_path + (String) localLibraryName;
+                    List<File> libraryPathChildren = new ArrayList<>();
+                    {
+                        File[] files = new File(libraryPath).listFiles();
+
+                        if (files != null) {
+                            libraryPathChildren = Arrays.asList(files);
+                        }
+                    }
+
+                    if (libraryPathChildren.contains(new File(libraryPath + "/config"))) {
+                        libraryMetadata.put("packageName", FileUtil.readFile(libraryPath + "/config"));
+                    }
+                    if (libraryPathChildren.contains(new File(libraryPath + "/res"))) {
+                        libraryMetadata.put("resPath", libraryPath + "/res");
+                    }
+                    if (libraryPathChildren.contains(new File(libraryPath + "/classes.jar"))) {
+                        libraryMetadata.put("jarPath", libraryPath + "/classes.jar");
+                    }
+                    if (libraryPathChildren.contains(new File(libraryPath + "/classes.dex"))) {
+                        libraryMetadata.put("dexPath", libraryPath.concat("/classes.dex"));
+                    }
+                    if (libraryPathChildren.contains(new File(libraryPath.concat("/AndroidManifest.xml")))) {
+                        libraryMetadata.put("manifestPath", libraryPath.concat("/AndroidManifest.xml"));
+                    }
+                    if (libraryPathChildren.contains(new File(libraryPath.concat("/proguard.txt")))) {
+                        libraryMetadata.put("pgRulesPath", libraryPath.concat("/proguard.txt"));
+                    }
+                    if (libraryPathChildren.contains(new File(libraryPath.concat("/assets")))) {
+                        libraryMetadata.put("assetsPath", libraryPath.concat("/assets"));
+                    }
+
+                    inUseLibraries.add(libraryMetadata);
+                }
+            }
+        }
+
+        FileUtil.writeFile(configurationFilePath, new Gson().toJson(inUseLibraries));
     }
 
     private class LibraryAdapter extends BaseAdapter {
@@ -213,69 +325,35 @@ public class ManageLocalLibraryActivity extends Activity implements View.OnClick
                 convertView = getLayoutInflater().inflate(Resources.layout.view_item_local_lib, null);
             }
             final CheckBox checkBox = convertView.findViewById(Resources.id.checkbox_content);
-            final ImageView delete = convertView.findViewById(Resources.id.img_delete);
+            final ImageView options = convertView.findViewById(Resources.id.img_delete);
 
-            HashMap<String, Object> currentLibrary = main_list.get(position);
+            final HashMap<String, Object> currentLibrary = _data.get(position);
 
             Object name = currentLibrary.get("name");
             if (name instanceof String) {
                 checkBox.setText((String) name);
             }
-            checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                HashMap<String, Object> hashMap = new HashMap<>();
-                hashMap.put("name", checkBox.getText().toString());
-                String libraryPath = local_libs_path + checkBox.getText().toString();
-                if (FileUtil.isExistFile(libraryPath + "/config")) {
-                    hashMap.put("packageName", FileUtil.readFile(libraryPath + "/config"));
-                }
-                if (FileUtil.isExistFile(libraryPath + "/res")) {
-                    hashMap.put("resPath", libraryPath + "/res");
-                }
-                if (FileUtil.isExistFile(libraryPath + "/classes.jar")) {
-                    hashMap.put("jarPath", libraryPath + "/classes.jar");
-                }
-                if (FileUtil.isExistFile(libraryPath + "/classes.dex")) {
-                    hashMap.put("dexPath", libraryPath.concat("/classes.dex"));
-                }
-                if (FileUtil.isExistFile(libraryPath.concat("/AndroidManifest.xml"))) {
-                    hashMap.put("manifestPath", libraryPath.concat("/AndroidManifest.xml"));
-                }
-                if (FileUtil.isExistFile(libraryPath.concat("/proguard.txt"))) {
-                    hashMap.put("pgRulesPath", libraryPath.concat("/proguard.txt"));
-                }
-                if (FileUtil.isExistFile(libraryPath.concat("/assets"))) {
-                    hashMap.put("assetsPath", libraryPath.concat("/assets"));
-                }
-                if (!isChecked) {
-                    project_used_libs.remove(hashMap);
-                } else {
-                    int n = 0;
-                    while (n < project_used_libs.size()) {
-                        Object usedLibraryName = project_used_libs.get(n).get("name");
-                        if (usedLibraryName instanceof String) {
-                            if (checkBox.getText().toString().equals(usedLibraryName)) {
-                                project_used_libs.remove(hashMap);
-                            }
-                        }
-                        n++;
-                    }
-                    project_used_libs.add(hashMap);
-                }
-                if(getIntent().getStringExtra("sc_id") != "system") {
-                FileUtil.writeFile(configurationFilePath, new Gson().toJson(project_used_libs));
-                }
-             });
 
-            for (HashMap<String, Object> library : lookup_list) {
-                Object usedLibraryName = library.get("name");
-                if (usedLibraryName instanceof String) {
-                    if (checkBox.getText().toString().equals(usedLibraryName)) {
-	                checkBox.setChecked(true);
-                    }
+            if (configuringProject) {
+                Object currentLibraryInUse = currentLibrary.get("inUse");
+
+                if (currentLibraryInUse instanceof Boolean) {
+                    checkBox.setChecked((Boolean) currentLibraryInUse);
+                } else {
+                    currentLibrary.remove("inUse");
+                    checkBox.setChecked(false);
                 }
+            } else {
+                checkBox.setEnabled(false);
             }
 
-            delete.setOnClickListener(v -> {
+            checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                Log.d("ManageLocalLibraryActivity", "OnCheckedChange for position " + position + ", isChecked: " + isChecked);
+                Log.d("ManageLocalLibraryActivity", "localLibraries as String: " + localLibraries);
+                _data.get(position).put("inUse", isChecked);
+            });
+
+            options.setOnClickListener(v -> {
                 PopupMenu popupMenu = new PopupMenu(ManageLocalLibraryActivity.this, v);
 
                 Menu menu = popupMenu.getMenu();
@@ -286,7 +364,7 @@ public class ManageLocalLibraryActivity extends Activity implements View.OnClick
                     switch (menuItem.getTitle().toString()) {
                         case "Delete":
                             checkBox.setChecked(false);
-                            FileUtil.deleteFile(local_libs_path.concat(checkBox.getText().toString()));
+                            FileUtil.deleteFile(local_libs_path + checkBox.getText().toString());
                             loadFiles();
                             break;
 
