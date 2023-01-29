@@ -1,17 +1,24 @@
 package mod.jbk.util;
 
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
+import android.util.Pair;
 
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
 public class LogUtil {
 
     private static boolean loggingEnabled = true;
     private static boolean logToLogcatToo = false;
+    private static final Set<Pair<Character, Handler>> handlers = new HashSet<>();
 
     public static void setLoggingEnabled(boolean enabled) {
         loggingEnabled = enabled;
@@ -102,6 +109,27 @@ public class LogUtil {
                     break;
             }
         }
+
+        for (Pair<Character, Handler> pair : handlers) {
+            if (pair.first.equals(type)) {
+                var handler = pair.second;
+                var messageObj = handler.obtainMessage(type);
+                Bundle data = new Bundle();
+                data.putString("tag", tag);
+                data.putString("message", message);
+                data.putSerializable("throwable", throwable);
+                messageObj.setData(data);
+                pair.second.sendMessage(messageObj);
+            }
+        }
+    }
+
+    public static boolean addLogHandler(char type, Handler handler) {
+        return handlers.add(new Pair<>(type, handler));
+    }
+
+    public static boolean removeLogHandler(char type, Handler handler) {
+        return handlers.remove(new Pair<>(type, handler));
     }
 
     private static String getDateAndTime(long millis) {

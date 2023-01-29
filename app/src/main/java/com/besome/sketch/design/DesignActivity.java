@@ -14,6 +14,9 @@ import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
@@ -28,6 +31,7 @@ import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.FileProvider;
@@ -927,11 +931,31 @@ public class DesignActivity extends BaseAppCompatActivity implements OnClickList
     private class BuildAsyncTask extends MA implements OnCancelListener, BuildProgressReceiver {
 
         private final BuildingDialog dialog;
+        private final Handler errorLogHandler;
         private boolean canceled = false;
 
         public BuildAsyncTask(Context context) {
             super(context);
             DesignActivity.this.a((MA) this);
+            errorLogHandler = new Handler(Looper.getMainLooper()) {
+                @Override
+                public void handleMessage(@NonNull Message msg) {
+                    if (msg.what == 'E') {
+                        Bundle data = msg.getData();
+                        String tag = data.getString("tag");
+                        String message = data.getString("message");
+                        Throwable throwable;
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            throwable = (Throwable) data.getSerializable("tag");
+                        } else {
+                            throwable = data.getSerializable("tag", Throwable.class);
+                        }
+
+                        // TODO: Show warnings in UI
+                    }
+                }
+            };
+            LogUtil.addLogHandler('E', errorLogHandler);
             dialog = new BuildingDialog(DesignActivity.this);
             maybeShow();
             dialog.setIsCancelableOnBackPressed(false);
@@ -946,6 +970,8 @@ public class DesignActivity extends BaseAppCompatActivity implements OnClickList
          */
         @Override
         public void a() {
+            // TODO: Remove errorLogHandler in other cases
+            LogUtil.removeLogHandler('E', errorLogHandler);
             dismiss();
             runProject.setText(Helper.getResString(R.string.common_word_run));
             runProject.setClickable(true);
