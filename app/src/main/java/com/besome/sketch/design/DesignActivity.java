@@ -946,9 +946,9 @@ public class DesignActivity extends BaseAppCompatActivity implements OnClickList
                         String message = data.getString("message");
                         Throwable throwable;
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                            throwable = (Throwable) data.getSerializable("tag");
+                            throwable = (Throwable) data.getSerializable("throwable");
                         } else {
-                            throwable = data.getSerializable("tag", Throwable.class);
+                            throwable = data.getSerializable("throwable", Throwable.class);
                         }
 
                         // TODO: Show warnings in UI
