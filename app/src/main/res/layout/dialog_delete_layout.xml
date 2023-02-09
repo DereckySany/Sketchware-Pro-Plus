@@ -7,7 +7,7 @@
     <LinearLayout
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:id="@id/dialoginputlayoutLinearLayout1"
+        android:id="@+id/dialogdeletelayoutLinearLayout1"
         android:paddingLeft="20.0dip"
         android:paddingTop="15.0dip"
         android:paddingBottom="5.0dip"
@@ -17,19 +17,20 @@
             android:layout_width="30.0dip"
             android:layout_height="30.0dip"
             android:layout_marginRight="10.0dip"
-            android:src="@drawable/rename_96_blue"
+            android:backgroundTint="@color/scolor_red_01"
+            android:background="@drawable/icon_delete_active"
             android:scaleType="fitCenter" />
         <TextView
             android:textSize="18.0sp"
             android:textStyle="bold"
-            android:textColor="#ff142fbc"
+            android:textColor="@color/scolor_red_01"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Rename file" />
     </LinearLayout>
     <com.google.android.material.textfield.TextInputLayout
         android:orientation="vertical"
-        android:id="@id/dialoginputlayoutLinearLayout2"
+        android:id="@+id/dialogdeletelayoutLinearLayout2"
         android:paddingLeft="20.0dip"
         android:paddingTop="10.0dip"
         android:paddingRight="20.0dip"
@@ -38,8 +39,8 @@
         android:layout_height="wrap_content">
         <EditText
             android:textSize="18.0sp"
-            android:textColorHint="#ff142fbc"
-            android:id="@id/edittext_change_name"
+            android:textColorHint="@color/scolor_red_01"
+            android:id="@+id/edittext_delete_name"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             android:hint="New file name"
@@ -47,9 +48,10 @@
             android:autofillHints="" />
     </com.google.android.material.textfield.TextInputLayout>
     <LinearLayout
+        android:id="@+id/dialog_delete_down_bar"
         android:gravity="right"
         android:orientation="horizontal"
-        android:background="#FF142FBC"
+        android:background="@color/scolor_red_01"
         android:paddingTop="10.0dip"
         android:paddingRight="18.0dip"
         android:paddingBottom="10.0dip"
@@ -58,7 +60,7 @@
         <TextView
             android:textStyle="bold"
             android:textColor="#ffffffff"
-            android:id="@id/text_cancel"
+            android:id="@+id/text_del_cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginRight="15.0dip"
@@ -66,10 +68,10 @@
         <TextView
             android:textStyle="bold"
             android:textColor="#ffffffff"
-            android:id="@id/text_save"
+            android:id="@+id/text_del_delete"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="15.0dip"
-            android:text="@string/common_word_save" />
+            android:text="@string/common_word_delete" />
     </LinearLayout>
 </LinearLayout>
