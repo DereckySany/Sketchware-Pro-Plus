@@ -45,7 +45,7 @@ public class ProjectFile {
                 return Color.parseColor("#ff57beee");
 
             default:
-                return Color.parseColor("@color/color_primary_dark");
+                return Color.parseColor("#ff008dcd");
         }
     }
 }
