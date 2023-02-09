@@ -1,23 +1,39 @@
 package mod.hey.studios.project.library;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
-import android.util.Log;
+import android.graphics.Color;
+
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
+
+// clip board
+import android.content.Context;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+//
 
 import com.android.tools.r8.D8;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.sketchware.remod.R;
+import com.google.android.material.snackbar.Snackbar;
+
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -33,7 +49,7 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import a.a.a.Dp;
+
 import a.a.a.bB;
 import mod.SketchwareUtil;
 import mod.agus.jcoderz.dx.command.dexer.Main;
@@ -61,11 +77,14 @@ public class LibraryDownloader {
     private OnCompleteListener listener;
     private AlertDialog dialog;
     private boolean isAarAvailable = false, isAarDownloaded = false;
+    private boolean isJarAvailable = false, isJarDownloaded = false;
+    private boolean Use_Aar = true;
     private int downloadId;
     private String libName = "";
     private String currentRepo = "";
     private int counter = 0;
     private ArrayList<HashMap<String, Object>> repoMap = new ArrayList<>();
+    private ProgressDialog progressDialog;
 
     public LibraryDownloader(Activity context, boolean use_d8) {
         this.context = context;
@@ -76,8 +95,60 @@ public class LibraryDownloader {
 
     private static void mkdirs(File file, String str) {
         File file2 = new File(file, str);
-        if (!file2.exists()) {
+        if (!file2.exists())
             file2.mkdirs();
+    }
+
+    public static void copyFile(String sourcePath, String destPath) {
+        if (!FileUtil.isExistFile(sourcePath)) return;
+        createNewFile(destPath);
+
+        FileInputStream fis = null;
+        FileOutputStream fos = null;
+
+        try {
+            fis = new FileInputStream(sourcePath);
+            fos = new FileOutputStream(destPath, false);
+
+            byte[] buff = new byte[1024];
+            int length = 0;
+
+            while ((length = fis.read(buff)) > 0) {
+                fos.write(buff, 0, length);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private static void createNewFile(String path) {
+        int lastSep = path.lastIndexOf(File.separator);
+        if (lastSep > 0) {
+            String dirPath = path.substring(0, lastSep);
+            FileUtil.makeDir(dirPath);
+        }
+
+        File file = new File(path);
+
+        try {
+            if (!file.exists()) file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -105,6 +176,19 @@ public class LibraryDownloader {
         }
     }
 
+    public String getClipeBoard() {
+        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(context.CLIPBOARD_SERVICE);
+        if (clipboard.hasPrimaryClip()) {
+            //android.content.ClipDescription description = clipboard.getPrimaryClipDescription();
+            android.content.ClipData data = clipboard.getPrimaryClip();
+            //if (data != null && description != null && description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN))
+            if (data != null) {
+                return String.valueOf(data.getItemAt(0).getText());
+            }
+        }
+        return null;
+    }
+
     public void showDialog(OnCompleteListener listener) {
         this.listener = listener;
 
@@ -123,39 +207,132 @@ public class LibraryDownloader {
         final LinearLayout cancel = view.findViewById(R.id.linear11);
         final EditText library = view.findViewById(R.id.edittext1);
 
+        final ImageButton acao = view.findViewById(R.id.imageview1);
+        final RadioGroup radiog = view.findViewById(R.id.choselibraryextesion);
+        final RadioButton useAar = view.findViewById(R.id.liblaryformataar);
+        final RadioButton useJar = view.findViewById(R.id.liblaryformatjar);
+
         linear1.removeView(progressBarContainer);
 
         builder.setView(view);
+        builder.setCancelable(false);
+
         dialog = builder.show();
 
+        useAar.setEnabled(true);
+        useJar.setEnabled(true);
+
+        start.setEnabled(true);
+        start.setVisibility(View.VISIBLE);
         pause.setEnabled(false);
-        pause.setVisibility(View.INVISIBLE);
+        pause.setVisibility(View.GONE);
+        pause.setEnabled(false);
+        pause.setVisibility(View.GONE);
         resume.setEnabled(false);
-        resume.setVisibility(View.INVISIBLE);
-        cancel.setEnabled(false);
-        cancel.setVisibility(View.INVISIBLE);
+        resume.setVisibility(View.GONE);
+        cancel.setEnabled(true);
+        cancel.setVisibility(View.VISIBLE);
+
+        library.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
+                final String _charSeq = _param1.toString();
+                if (_charSeq.length() > 0) {
+                    acao.setImageResource(R.drawable.ic_delete_grey);
+                } else {
+                    acao.setImageResource(R.drawable.ic_content_paste_grey);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+            }
+        });
+
+        acao.setOnClickListener(acaoView -> {
+            if (library.getText().toString().length() > 0) {
+                library.setText("");
+            } else {
+                library.setText(getClipeBoard());
+            }
+        });
 
         start.setOnClickListener(startView -> {
+
             String dependency = library.getText().toString();
 
             if (dependency.isEmpty()) {
                 SketchwareUtil.toastError("Dependency can't be empty");
+                library.setTextColor(0xFF000000);
             } else if (!dependency.contains(":")) {
                 SketchwareUtil.toastError("Invalid dependency");
-            } else {
+                library.setTextColor(0xFFf91010);
+            } else if (dependency.contains("implementation") || dependency.contains(":")) {             
+	        if (dependency.contains("group:") || dependency.contains(",")) {
+                SketchwareUtil.toast("Maven Gradle");
+                /* clear Maven Gradle format:
+                implementation group: 'io.github.amrdeveloper', name: 'codeview', version: '1.3.7' */
+                dependency = dependency.replace("implementation", "");
+                dependency = dependency.replace("\'", "");
+                dependency = dependency.replace(",", "");
+                dependency = dependency.replace("group:", "");
+                dependency = dependency.replace("name:", ":");
+                dependency = dependency.replace("version:", ":");   
+                dependency = dependency.replace(" ", "");       
+	        } else if (dependency.contains("implementation") || dependency.contains(":")) {
+                SketchwareUtil.toast("Maven Gradle (Short), Gradle (Kotlin) or buildr");
+	        /* clear Maven Gradle (Short) and Gradle (Kotlin) format:
+                implementation ("io.github.amrdeveloper:codeview:1.3.7") */
+                dependency = dependency.replace("implementation", "");
+                dependency = dependency.replace(" ", "");
+                dependency = dependency.replace("\'", "");
+                dependency = dependency.replace("\"", "");
+                dependency = dependency.replace("(", "");
+                dependency = dependency.replace(")", "");  
+             // buildr format
+                if (dependency.contains(":jar:")){
+                    dependency = dependency.replace(":jar:", ":"); 
+                    useJar.setChecked(true);
+                }
+                if (dependency.contains(":aar:")){
+                    dependency = dependency.replace(":aar:", ":");
+                    useAar.setChecked(true);
+                }
+                } else {
+                    SketchwareUtil.toastError("Invalid dependency");
+                    library.setTextColor(0xFFf91010);
+                }
+                dependency = dependency.replace("\n", "");
+                dependency.trim();
+                library.setText(dependency);
+                library.setTextColor(0xFF00E676);
+
                 libName = downloadPath + _getLibName(dependency);
 
                 if (!FileUtil.isExistFile(libName)) {
                     FileUtil.makeDir(libName);
                 }
+                Use_Aar = useAar.isChecked();
 
                 isAarDownloaded = false;
                 isAarAvailable = false;
 
+                isJarDownloaded = false;
+                isJarAvailable = false;
+
                 library.setEnabled(false);
 
+                acao.setEnabled(false);
+
+                useAar.setEnabled(false);
+                useJar.setEnabled(false);
+
                 start.setEnabled(false);
-                start.setVisibility(View.INVISIBLE);
+                start.setVisibility(View.GONE);
 
                 cancel.setEnabled(true);
                 cancel.setVisibility(View.VISIBLE);
@@ -165,7 +342,7 @@ public class LibraryDownloader {
                 currentRepo = repoUrls.get(counter);
 
                 downloadId = _download(
-                        currentRepo.concat(_getAarDownloadLink(dependency)),
+                        currentRepo.concat((Use_Aar ? _getAarDownloadLink(dependency) : _getJarDownloadLink(dependency))),
                         downloadPath,
                         _getLibName(dependency + ".zip"),
                         library,
@@ -176,8 +353,15 @@ public class LibraryDownloader {
                         pause,
                         resume,
                         cancel,
+                        acao,
+                        useAar,
+                        useJar,
                         progressbar1
                 );
+
+            } else {
+                SketchwareUtil.toastError("Invalid dependency");
+                library.setTextColor(0xFFf91010);
             }
         });
 
@@ -196,7 +380,9 @@ public class LibraryDownloader {
         cancel.setOnClickListener(cancelView -> {
             PRDownloader.cancel(downloadId);
             library.setEnabled(false);
-            dialog.dismiss();
+            if (dialog != null && dialog.isShowing()) {
+                dialog.dismiss();
+            }
         });
     }
 
@@ -210,10 +396,26 @@ public class LibraryDownloader {
 
         return str2.concat(split[split.length - 1]).concat("/").concat(_getAarName(str));
     }
+    /** keep separated for futures fix **/
+    private String _getJarDownloadLink(String str) {
+        String[] split = str.split(":");
+        String str2 = "/";
+
+        for (int i = 0; i < split.length - 1; i++) {
+            str2 = str2.concat(split[i].replace(".", "/") + "/");
+        }
+
+        return str2.concat(split[split.length - 1]).concat("/").concat(_getJarName(str));
+    }
 
     private String _getAarName(String str) {
         String[] split = str.split(":");
         return split[split.length - 2] + "-" + split[split.length - 1] + ".aar";
+    }
+    /** keep separated for futures fix **/
+    private String _getJarName(String str) {
+        String[] split = str.split(":");
+        return split[split.length - 2] + "-" + split[split.length - 1] + ".jar";
     }
 
     private String _getLibName(String str) {
@@ -223,41 +425,43 @@ public class LibraryDownloader {
 
     private void _jar2dex(String _path) throws Exception {
         // 6.3.0
-        if (use_d8) {
-            File libs = BuiltInLibraries.EXTRACTED_COMPILE_ASSETS_PATH;
+            if (use_d8) {
+                // File libs = new File(context.getFilesDir(), "libs");
 
-            ArrayList<String> cm = new ArrayList<>();
-            cm.add("--release");
-            cm.add("--intermediate");
+                ArrayList<String> cmd = new ArrayList<>();
+                cmd.add("--release");
+                cmd.add("--intermediate");
 
-            cm.add("--lib");
-            cm.add(new File(libs, "android.jar").getAbsolutePath());
+                cmd.add("--lib");
+                cmd.add(new File(BuiltInLibraries.EXTRACTED_COMPILE_ASSETS_PATH, "android.jar").getAbsolutePath());
+                // cmd.add(new File(libs, "android.jar").getAbsolutePath());
 
-            cm.add("--classpath");
-            cm.add(new File(libs, "core-lambda-stubs.jar").getAbsolutePath());
+                cmd.add("--classpath");
+                cmd.add(new File(BuiltInLibraries.EXTRACTED_COMPILE_ASSETS_PATH, "core-lambda-stubs.jar").getAbsolutePath());
+                // cmd.add(new File(libs, "core-lambda-stubs.jar").getAbsolutePath());
 
-            cm.add("--output");
-            cm.add(new File(_path).getParentFile().getAbsolutePath());
+                cmd.add("--output");
+                cmd.add(new File(_path).getParentFile().getAbsolutePath());
 
-            // Input
-            cm.add(_path);
+                // Input
+                cmd.add(_path);
+                // run D8 with list commands
+                D8.main(cmd.toArray(new String[0]));
+            } else {
+                // 6.3.0 fix2
+                Main.clearInternTables();
 
-            D8.main(cm.toArray(new String[0]));
-        } else {
-            // 6.3.0 fix2
-            Main.clearInternTables();
-
-            // dx
-            Main.main(new String[]{
-                    // 6.3.0 fix1
-                    // "--dex",
-                    "--debug",
-                    "--verbose",
-                    "--multi-dex",
-                    "--output=" + new File(_path).getParentFile().getAbsolutePath(),
-                    _path
-            });
-        }
+                // dx
+                Main.main(new String[]{
+                        // 6.3.0 fix1
+                        "--dex", // not use ??
+                        "--debug",
+                        "--verbose",
+                        "--multi-dex",
+                        "--output=" + new File(_path).getParentFile().getAbsolutePath(),
+                        _path
+                });
+            }
     }
 
     private void _unZipFile(String str, String str2) {
@@ -320,7 +524,12 @@ public class LibraryDownloader {
             return defaultValue.split(":")[0];
         }
 
-        // Method 3: nothing worked. return empty string (lmao) (yeah lmao)
+        // Method 3: ignore manifesto. ignore dependency, testing new ways
+        if (defaultValue.contains(".")) {
+            return defaultValue.split("\\.")[0];
+        }
+
+        // Method 4: nothing worked. return empty string (lmao) (yeah lmao)
         return "";
     }
 
@@ -332,6 +541,7 @@ public class LibraryDownloader {
                 "classes.dex",
                 "classes.jar",
                 "config",
+                "version",
                 "AndroidManifest.xml",
                 "jni",
                 "assets",
@@ -352,6 +562,7 @@ public class LibraryDownloader {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private int _download(
             final String url,
             final String path,
@@ -367,6 +578,10 @@ public class LibraryDownloader {
             final LinearLayout resume,
             final LinearLayout cancel,
 
+            final ImageButton acao,
+            final RadioButton useAar,
+            final RadioButton useJar,
+
             final ProgressBar progressbar1) {
 
         return PRDownloader
@@ -374,18 +589,25 @@ public class LibraryDownloader {
                 .build()
                 .setOnStartOrResumeListener(() -> {
                     message.setText("Library found. Downloading...");
+
                     library.setEnabled(false);
+
+                    acao.setEnabled(false);
+
+                    useAar.setEnabled(false);
+                    useJar.setEnabled(false);
+
                     libraryContainer.removeAllViews();
                     libraryContainer.addView(progressBarContainer);
 
                     start.setEnabled(false);
-                    start.setVisibility(View.INVISIBLE);
+                    start.setVisibility(View.GONE);
 
                     pause.setEnabled(true);
                     pause.setVisibility(View.VISIBLE);
 
                     resume.setEnabled(false);
-                    resume.setVisibility(View.INVISIBLE);
+                    resume.setVisibility(View.GONE);
 
                     cancel.setEnabled(true);
                     cancel.setVisibility(View.VISIBLE);
@@ -393,11 +615,18 @@ public class LibraryDownloader {
                 .setOnPauseListener(() -> {
                     message.setText("Downloading paused.");
 
+                    library.setEnabled(false);
+
+                    acao.setEnabled(false);
+
+                    useAar.setEnabled(false);
+                    useJar.setEnabled(false);
+
                     start.setEnabled(false);
-                    start.setVisibility(View.INVISIBLE);
+                    start.setVisibility(View.GONE);
 
                     pause.setEnabled(false);
-                    pause.setVisibility(View.INVISIBLE);
+                    pause.setVisibility(View.GONE);
 
                     resume.setEnabled(true);
                     resume.setVisibility(View.VISIBLE);
@@ -408,17 +637,22 @@ public class LibraryDownloader {
                 .setOnCancelListener(() -> {
                     library.setEnabled(true);
 
+                    acao.setEnabled(true);
+
+                    useAar.setEnabled(true);
+                    useJar.setEnabled(true);
+
                     start.setEnabled(true);
                     start.setVisibility(View.VISIBLE);
 
                     pause.setEnabled(false);
-                    pause.setVisibility(View.INVISIBLE);
+                    pause.setVisibility(View.GONE);
 
                     resume.setEnabled(false);
-                    resume.setVisibility(View.INVISIBLE);
+                    resume.setVisibility(View.GONE);
 
-                    cancel.setEnabled(false);
-                    cancel.setVisibility(View.INVISIBLE);
+                    cancel.setEnabled(true);
+                    cancel.setVisibility(View.VISIBLE);
                 })
                 .setOnProgressListener(progress -> {
                     int progressPercent = (int) (progress.currentBytes * 100 / progress.totalBytes);
@@ -427,55 +661,89 @@ public class LibraryDownloader {
                 .start(new OnDownloadListener() {
                     @Override
                     public void onDownloadComplete() {
-                        isAarAvailable = true;
-                        isAarDownloaded = true;
+                        // this is a default in Sketchware
+                        isAarAvailable = Use_Aar;
+                        isAarDownloaded = Use_Aar;
+                        // this is the beginning of magic
+                        isJarAvailable = !isAarAvailable;
+                        isJarDownloaded = !isAarDownloaded;
 
                         StringBuilder path2 = new StringBuilder();
                         path2.append(downloadPath);
                         path2.append(_getLibName(library.getText().toString()).concat(".zip"));
 
-                        if (isAarDownloaded && isAarAvailable) {
-                            _unZipFile(path2.toString(), libName);
-                            if (FileUtil.isExistFile(libName.concat("/classes.jar"))) {
-                                if (use_d8 || JarCheck.checkJar(libName.concat("/classes.jar"), 44, 51)) {
-                                    message.setText("Download completed.");
-
-                                    String[] test = {libName.concat("/classes.jar")};
-                                    new BackTask().execute(test);
-                                    FileUtil.deleteFile(path2.toString());
-
-                                    FileUtil.writeFile(libName + "/config", findPackageName(libName + "/", library.getText().toString()));
-
-                                    deleteUnnecessaryFiles(libName + "/");
-
-                                } else {
-                                    message.setText("This jar is not supported by Dx since Dx only supports up to Java 1.7. In order to proceed, you need to switch to D8 (if your Android version is 8+)");
-                                    FileUtil.deleteFile(path2.toString());
-                                }
-                            } else {
-                                message.setText("Library doesn't contain a jar file.");
-                                FileUtil.deleteFile(path2.toString());
+                        if (Use_Aar) {
+                            if (isAarDownloaded && isAarAvailable) {
+                                _unZipFile(path2.toString(), libName);
                             }
+                        } else {
+                            if (isJarDownloaded && isJarAvailable) {
+                                FileUtil.makeDir(path2.toString());
+                                copyFile(path2.toString(), libName.concat("/classes.jar").toString());
+                            }
+                        }
+                        if (FileUtil.isExistFile(libName.concat("/classes.jar"))) {
+                            if (use_d8 || JarCheck.checkJar(libName.concat("/classes.jar"), 44, 51)) {
+
+                                message.setText("Download completed!");
+
+                                String[] test = new String[]{libName.concat("/classes.jar")};
+                                new BackTask().execute(test);
+                                FileUtil.deleteFile(path2.toString());
+
+                                FileUtil.writeFile(libName + "/config", findPackageName(libName + "/", library.getText().toString()));
+                                FileUtil.writeFile(libName + "/version", library.getText().toString());
+
+                                deleteUnnecessaryFiles(libName + "/");
+
+                            } else {
+                                message.setText("This jar is not supported by Dx since Dx only supports up to Java 1.7. In order to proceed, you need to switch to D8 (if your Android version is 8+)");
+                                FileUtil.deleteFile(path2.toString());
+
+                                cancel.setEnabled(true);
+                                cancel.setVisibility(View.VISIBLE);
+                            }
+                        } else {
+                            message.setText("Library doesn't contain a jar file.");
+                            FileUtil.deleteFile(path2.toString());
+                            library.setEnabled(true);
+
+                            acao.setEnabled(true);
+
+                            useAar.setEnabled(true);
+                            useJar.setEnabled(true);
+
+                            start.setEnabled(true);
+                            start.setVisibility(View.VISIBLE);
+
+                            cancel.setEnabled(true);
+                            cancel.setVisibility(View.VISIBLE);
                         }
 
                         library.setEnabled(true);
+
+                        acao.setEnabled(true);
+
+                        useAar.setEnabled(true);
+                        useJar.setEnabled(true);
+
                         start.setEnabled(true);
                         start.setVisibility(View.VISIBLE);
 
                         pause.setEnabled(false);
-                        pause.setVisibility(View.INVISIBLE);
+                        pause.setVisibility(View.GONE);
 
                         resume.setEnabled(false);
-                        resume.setVisibility(View.INVISIBLE);
+                        resume.setVisibility(View.GONE);
 
-                        cancel.setEnabled(false);
-                        cancel.setVisibility(View.INVISIBLE);
+                        cancel.setEnabled(true);
+                        cancel.setVisibility(View.VISIBLE);
                     }
 
                     @Override
                     public void onError(PRDownloader.Error e) {
                         if (e.isServerError()) {
-                            if (!(isAarDownloaded || isAarAvailable)) {
+                            if ((Use_Aar ? !(isAarDownloaded || isAarAvailable) : !(isJarDownloaded || isJarAvailable))) {
                                 if (counter < repoUrls.size()) {
                                     currentRepo = repoUrls.get(counter);
                                     String name = repoNames.get(counter);
@@ -484,7 +752,7 @@ public class LibraryDownloader {
                                     message.setText("Searching... " + counter + "/" + repoUrls.size() + " [" + name + "]");
 
                                     downloadId = _download(
-                                            currentRepo + _getAarDownloadLink(library.getText().toString()),
+                                            currentRepo.concat((Use_Aar ? _getAarDownloadLink(library.getText().toString()) : _getJarDownloadLink(library.getText().toString()))),
                                             downloadPath,
                                             _getLibName(library.getText().toString()) + ".zip",
                                             library,
@@ -495,6 +763,9 @@ public class LibraryDownloader {
                                             pause,
                                             resume,
                                             cancel,
+                                            acao,
+                                            useAar,
+                                            useJar,
                                             progressbar1
                                     );
 
@@ -502,34 +773,46 @@ public class LibraryDownloader {
                                     FileUtil.deleteFile(libName);
                                     message.setText("Library was not found in loaded repositories");
                                     library.setEnabled(true);
+
+                                    acao.setEnabled(true);
+
+                                    useAar.setEnabled(true);
+                                    useJar.setEnabled(true);
+
                                     start.setEnabled(true);
                                     start.setVisibility(View.VISIBLE);
 
                                     pause.setEnabled(false);
-                                    pause.setVisibility(View.INVISIBLE);
+                                    pause.setVisibility(View.GONE);
 
                                     resume.setEnabled(false);
-                                    resume.setVisibility(View.INVISIBLE);
+                                    resume.setVisibility(View.GONE);
 
-                                    cancel.setEnabled(false);
-                                    cancel.setVisibility(View.INVISIBLE);
+                                    cancel.setEnabled(true);
+                                    cancel.setVisibility(View.VISIBLE);
                                 }
                             }
                         } else {
                             if (e.isConnectionError()) {
                                 message.setText("Downloading failed. No network");
                                 library.setEnabled(true);
+
+                                acao.setEnabled(true);
+
+                                useAar.setEnabled(true);
+                                useJar.setEnabled(true);
+
                                 start.setEnabled(true);
                                 start.setVisibility(View.VISIBLE);
 
                                 pause.setEnabled(false);
-                                pause.setVisibility(View.INVISIBLE);
+                                pause.setVisibility(View.GONE);
 
                                 resume.setEnabled(false);
-                                resume.setVisibility(View.INVISIBLE);
+                                resume.setVisibility(View.GONE);
 
-                                cancel.setEnabled(false);
-                                cancel.setVisibility(View.INVISIBLE);
+                                cancel.setEnabled(true);
+                                cancel.setVisibility(View.VISIBLE);
 
                             }
                         }
@@ -557,7 +840,7 @@ public class LibraryDownloader {
                     // fall-through to shared error toast
                 }
 
-                SketchwareUtil.showFailedToParseJsonDialog(context, CONFIGURED_REPOSITORIES_FILE, "Custom Repositories", v -> _getRepository());
+                SketchwareUtil.toastError("Custom Repositories configuration file couldn't be read from. Using default repositories for now", Toast.LENGTH_LONG);
             } else {
                 FileUtil.writeFile(CONFIGURED_REPOSITORIES_FILE.getAbsolutePath(), DEFAULT_REPOSITORIES_FILE_CONTENT);
             }
@@ -585,15 +868,18 @@ public class LibraryDownloader {
         void onComplete();
     }
 
-    private class BackTask extends AsyncTask<String, String, String> implements BuildProgressReceiver {
-        private ProgressDialog progressDialog;
+    private class BackTask extends AsyncTask<String, String, String> {
         boolean success = false;
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+            if (dialog != null && dialog.isShowing()) {
+                dialog.dismiss();
+            }
             progressDialog = new ProgressDialog(context);
             progressDialog.setTitle("Please wait");
+            progressDialog.setMessage((use_d8 ? "D8" : "Dx") + " is running...");
             progressDialog.setCancelable(false);
             progressDialog.show();
         }
@@ -601,42 +887,34 @@ public class LibraryDownloader {
         @Override
         protected String doInBackground(String... params) {
             try {
-                BuiltInLibraries.maybeExtractAndroidJar(this);
-                publishProgress((use_d8 ? "D8" : "Dx") + " is running...");
                 _jar2dex(params[0]);
                 success = true;
             } catch (Exception e) {
                 success = false;
-                return Log.getStackTraceString(e);
+                return e.toString();
             }
-
             return "true";
         }
 
         @Override
         protected void onPostExecute(String s) {
             if (success) {
-                bB.a(context, "The library has been downloaded and imported to local libraries successfully.", 1).show();
+                // make a Toast 
+                bB.a(context, "The library has been downloaded and imported to local libraries successfully.\n"  + libName.toString(), 60).show();
                 listener.onComplete();
             } else {
-                SketchwareUtil.showAnErrorOccurredDialog(context, s);
+                bB.a(context, "Dexing failed: " + s, 5).show();
             }
 
             if (dialog != null && dialog.isShowing()) {
                 dialog.dismiss();
             }
-
-            progressDialog.dismiss();
+            if (progressDialog != null && progressDialog.isShowing()) {
+                progressDialog.dismiss();
+            }
         }
-
-        @Override
-        protected void onProgressUpdate(String... values) {
-            progressDialog.setMessage(values[0]);
-        }
-
-        @Override
-        public void onProgress(String progress) {
-            publishProgress(progress);
+        protected void setSuccess(String success){
+            bB.a(context, "Dexing finish: " + success, 5).show();
         }
     }
 }

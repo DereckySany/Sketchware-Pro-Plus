@@ -5,7 +5,7 @@
     <color name="browser_actions_divider_color">#1e000000</color>
     <color name="browser_actions_text_color">#de000000</color>
     <color name="browser_actions_title_color">#ff646464</color>
-    <color name="color_accent">#ff008dcd</color>
+    <color name="color_accent">@color/color_primary_dark</color>
     <color name="color_btn_blue_highlight">#ff005e8a</color>
     <color name="color_btn_blue_normal">#ff008dce</color>
     <color name="color_btn_green_highlight">#ff1d7a73</color>
@@ -20,14 +20,14 @@
     <color name="color_chk_white_normal">#fff5f5f5</color>
     <color name="color_control_highlight">#20008dcd</color>
     <color name="color_control_normal">#ff57beee</color>
-    <color name="color_primary">#ff008dcd</color>
+    <color name="color_primary">@color/color_primary_dark</color>
     <color name="color_primary_alpha">#bb008dcd</color>
     <color name="color_primary_dark">#ff0084c2</color>
     <color name="color_ripple">#b2000000</color>
     <color name="color_secondary">#ff57beee</color>
     <color name="design_menu_bg">#ffffffff</color>
     <color name="design_menu_text_color">#ff000000</color>
-    <color name="design_tab_background">#ff008dcd</color>
+    <color name="design_tab_background">@color/color_primary_dark</color>
     <color name="design_tab_indicator_color">#ffffc107</color>
     <color name="design_tab_selected_text_color">#ffffffff</color>
     <color name="design_tab_text_color">#ffa8cde9</color>
@@ -61,12 +61,12 @@
     <color name="scolor_sl_01">#ff1d2129</color>
     <color name="scolor_sl_02">#ffffb055</color>
     <color name="scolor_sl_03">#ffde0000</color>
-    <color name="scolor_sl_04">#ff008dcd</color>
+    <color name="scolor_sl_04">@color/color_primary_dark</color>
     <color name="scolor_yellow_01">#fff1c40f</color>
     <color name="scratch_end_gradient">#ffd0f1ff</color>
     <color name="scratch_start_gradient">#ffd0f1ff</color>
     <color name="swipe_refresh">#ffffffff</color>
-    <color name="swipe_refresh_bg">#ff008dcd</color>
+    <color name="swipe_refresh_bg">@color/color_primary_dark</color>
     <color name="tool_bar_text_color">#ffffffff</color>
     <color name="transparent">#00ffffff</color>
     <color name="darkGrey">#ff272822</color>
@@ -81,5 +81,6 @@
     <color name="monokia_pro_orange">#ffffd866</color>
     <color name="monokia_pro_purple">#ffab9df2</color>
     <color name="monokia_pro_grey">#ff727072</color>
-    <color name="colorBottomBarSW">#ff008dcd</color>
+    <color name="colorBottomBarSW">@color/color_primary_dark</color>
+    <color name="white_bg">#ffffffff</color>
 </resources>

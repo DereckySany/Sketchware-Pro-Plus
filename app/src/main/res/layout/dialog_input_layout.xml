@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Rename file"
-            android:textColor="#ff008dcd"
+            android:textColor="@color/color_primary_dark"
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
