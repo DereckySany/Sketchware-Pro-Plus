@@ -32,9 +32,19 @@ on:
       - 'public-stable-ids.txt'
       - 'settings.gradle'
   workflow_dispatch:
-
+    inputs:
+      job:
+        description: 'Job to run'
+        required: true
+        type: choice
+        default: 'buildMinApi26'
+        options:
+          - both
+          - buildMinApi21
+          - buildMinApi26
 jobs:
   buildMinApi26:
+    if: ${{ github.event.inputs.job == 'buildMinApi26' || github.event.inputs.job == 'both' }}
     name: Build minApi26 debug APK
     runs-on: ubuntu-latest
     steps:
@@ -73,6 +83,7 @@ jobs:
           path: app/build/outputs/apk/minApi26/debug
 
   buildMinApi21:
+    if: ${{ github.event.inputs.job == 'buildMinApi21' || github.event.inputs.job == 'both' }}
     name: Build minApi21 debug APK
     runs-on: ubuntu-latest
     steps:
