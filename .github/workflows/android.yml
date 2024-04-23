@@ -106,7 +106,7 @@ jobs:
           distribution: temurin
 
       - name: Build debug APK
-        uses: gradle/gradle-build-action@v3.3.1
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: assembleMinApi26Debug
         env:
@@ -154,9 +154,9 @@ jobs:
           distribution: temurin
 
       - name: Build debug APK
-        uses: gradle/gradle-build-action@v3.3.1
+        uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: assembleMinApi21Debug
+          arguments: 'assembleMinApi21Debug'
         env:
           CRASH_REPORT_WEBHOOK_URL: ${{ secrets.CRASH_REPORT_WEBHOOK_URL }}
 
