@@ -48,7 +48,7 @@ jobs:
     name: Build minApi26 debug APK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.3
         with:
           fetch-depth: 0
       - name: Upgrading the Wrapper version
@@ -70,14 +70,14 @@ jobs:
           distribution: temurin
 
       - name: Build debug APK
-        uses: gradle/gradle-build-action@v4
+        uses: gradle/gradle-build-action@v3.3.1
         with:
           arguments: assembleMinApi26Debug
         env:
           CRASH_REPORT_WEBHOOK_URL: ${{ secrets.CRASH_REPORT_WEBHOOK_URL }}
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.3
         with:
           name: apk-minApi26-debug
           path: app/build/outputs/apk/minApi26/debug
@@ -87,7 +87,7 @@ jobs:
     name: Build minApi21 debug APK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.3
         with:
           fetch-depth: 0
       - name: Upgrading the Wrapper version
@@ -109,14 +109,14 @@ jobs:
           distribution: temurin
 
       - name: Build debug APK
-        uses: gradle/gradle-build-action@v4
+        uses: gradle/gradle-build-action@v3.3.1
         with:
           arguments: assembleMinApi21Debug
         env:
           CRASH_REPORT_WEBHOOK_URL: ${{ secrets.CRASH_REPORT_WEBHOOK_URL }}
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.3
         with:
           name: apk-minApi21-debug
           path: app/build/outputs/apk/minApi21/debug
