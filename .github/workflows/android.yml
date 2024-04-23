@@ -33,8 +33,17 @@ on:
       - 'settings.gradle'
   workflow_dispatch:
     inputs:
+      RUN_OS_VERSON:
+        required: true
+        description: "Variant OS:"
+        type: choice
+        default: ubuntu-latest
+        options:
+          - ubuntu-latest
+          - ubuntu-22.04
+          - ubuntu-20.04
       job:
-        description: 'Job to run'
+        description: 'Variant api:'
         required: true
         type: choice
         default: 'buildMinApi26'
@@ -46,7 +55,7 @@ jobs:
   buildMinApi26:
     if: ${{ github.event.inputs.job == 'buildMinApi26' || github.event.inputs.job == 'both' }}
     name: Build minApi26 debug APK
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.RUN_OS_VERSON }}
     steps:
       - uses: actions/checkout@v4.1.3
         with:
@@ -85,7 +94,7 @@ jobs:
   buildMinApi21:
     if: ${{ github.event.inputs.job == 'buildMinApi21' || github.event.inputs.job == 'both' }}
     name: Build minApi21 debug APK
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.RUN_OS_VERSON }}
     steps:
       - uses: actions/checkout@v4.1.3
         with:
