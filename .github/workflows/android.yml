@@ -53,6 +53,7 @@ on:
           - buildMinApi26
 jobs:
   clearWorkflow:
+    name: Remove fail run
     runs-on: ${{ github.event.inputs.RUN_OS_VERSON }}
     steps:
       - name: Delete failed workflow runs
@@ -76,7 +77,8 @@ jobs:
           
       - name: Upgrading the Wrapper version
         run: |
-          # Atualiza a versão do Gradle Wrapper para 8.0-rc-2
+          # Update version of Gradle Wrapper to 8.0-rc-2
+          ./gradlew wrapper --gradle-version 8.0-rc-2 --distribution-type all
           ./gradlew wrapper --gradle-version 8.0-rc-2 --distribution-type all
       
       - name: Verify the checksum of the Wrapper JAR
@@ -123,7 +125,8 @@ jobs:
           
       - name: Upgrading the Wrapper version
         run: |
-          # Atualiza a versão do Gradle Wrapper para 8.0-rc-2
+          # Update version of Gradle Wrapper to 8.0-rc-2
+          ./gradlew wrapper --gradle-version 8.0-rc-2 --distribution-type all
           ./gradlew wrapper --gradle-version 8.0-rc-2 --distribution-type all
       
       - name: Verify the checksum of the Wrapper JAR
